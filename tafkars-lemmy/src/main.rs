@@ -21,10 +21,24 @@ pub struct GatewayConfig {
 #[derive(Clone)]
 pub struct AppState {
     http_client: Client,
-    config: GatewayConfig,
 }
 
-impl AppState {
+pub struct ResponseConfig {
+    /// HTML-escape body_html in responses?
+    raw_json: bool,
+    /// Escape names like user@instance.xyz to user__instance_xyz in API responses?
+    escape_names: bool,
+    /// Unescape names given in API requests?
+    unescape_names: bool,
+}
+
+pub struct ResponseState<'a> {
+    app: &'a AppState,
+    config: &'a GatewayConfig,
+    res_config: ResponseConfig,
+}
+
+impl<'a> ResponseState<'a> {
     pub async fn api_call(
         &self,
         endpoint: &str,
@@ -32,14 +46,14 @@ impl AppState {
     ) -> Result<String, MyError> {
         let api_url = &self.config.lemmy_url;
         Ok(self
+            .app
             .http_client
             .get(format!("{api_url}/{endpoint}"))
             .query(params)
             .send()
             .await?
             .text()
-            .await?
-        )
+            .await?)
     }
 
     pub async fn api_call_typed<T: DeserializeOwned>(
@@ -79,14 +93,30 @@ pub enum MyError {
     MisconfigurationError,
 }
 
-pub fn prepare(req: &HttpRequest) -> Result<&AppState, MyError> {
-    let app = req
+pub fn prepare(req: &HttpRequest) -> Result<ResponseState, MyError> {
+    let app = &req
         .app_data::<AppState>()
         .ok_or(MyError::MisconfigurationError)?;
 
+    let config = &req
+        .app_data::<GatewayConfig>()
+        .ok_or(MyError::MisconfigurationError)?;
+
     let user_agent = req.headers().get("user-agent");
+
+    let res_config = ResponseConfig {
+        raw_json: req.query_string().contains("raw_json=1"),
+        escape_names: true,
+        unescape_names: true,
+    };
+
+    let state = ResponseState {
+        app,
+        config,
+        res_config,
+    };
     // TODO: use headers to determine how much deviation from standard API this client can handle
-    Ok(app)
+    Ok(state)
 }
 
 impl ResponseError for MyError {}
@@ -96,9 +126,11 @@ async fn subreddit(
     req: HttpRequest,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, MyError> {
-    let app = prepare(&req)?;
+    let state = prepare(&req)?;
     let (subreddit, _sorting) = path.into_inner(); // TODO: apply sorting
-    let subreddit = subreddit.replace("_at_", "@").replace("_dot_", ".");
+
+    let subreddit = state.unescape_name(&subreddit).unwrap_or(subreddit);
+
     let params = GetPosts {
         sort: None,
         community_name: Some(subreddit.to_string()),
@@ -106,8 +138,26 @@ async fn subreddit(
         ..Default::default()
     };
 
-    let res = app.get_posts(&params).await?;
-    let posts = api_translation::posts(&app.config, res);
+    let res = state.get_posts(&params).await?;
+    let posts = api_translation::posts(&state, res);
+    Ok(HttpResponse::Ok()
+        .insert_header(ContentType::json())
+        .body(serde_json::to_string(&posts)?))
+}
+
+#[get("/{sorting}{_:/?}.json")]
+async fn frontpage(req: HttpRequest, path: web::Path<(String,)>) -> Result<HttpResponse, MyError> {
+    let state = prepare(&req)?;
+    let (_sorting,) = path.into_inner(); // TODO: apply sorting
+    let params = GetPosts {
+        sort: None,
+        auth: None,
+        type_: Some(ListingType::All),
+        ..Default::default()
+    };
+
+    let res = state.get_posts(&params).await?;
+    let posts = api_translation::posts(&state, res);
     Ok(HttpResponse::Ok()
         .insert_header(ContentType::json())
         .body(serde_json::to_string(&posts)?))
@@ -118,19 +168,19 @@ async fn comments_for_post(
     req: HttpRequest,
     path: web::Path<(String,)>,
 ) -> Result<HttpResponse, MyError> {
-    let app = prepare(&req)?;
+    let state = prepare(&req)?;
     let post_id = path.into_inner().0.parse()?;
 
-    let res = app
+    let res = state
         .get_post(&GetPost {
             id: Some(PostId(post_id)),
             auth: None,
             ..Default::default()
         })
         .await?;
-    let post = api_translation::post(&app.config, res.post_view);
+    let post = api_translation::post(&state, res.post_view);
     let post_listing = Listing::new(vec![post]);
-    let res = app
+    let res = state
         .get_comments(&GetComments {
             type_: Some(ListingType::All),
             sort: Some(CommentSortType::Hot),
@@ -142,7 +192,7 @@ async fn comments_for_post(
             ..Default::default()
         })
         .await?;
-    let comments = api_translation::comments(&app.config, res);
+    let comments = api_translation::comments(&state, res);
 
     Ok(HttpResponse::Ok()
         .insert_header(ContentType::json())
@@ -156,18 +206,20 @@ async fn main() -> std::io::Result<()> {
     let lemmy_url: String = env::args()
         .nth(1)
         .expect("please providy a lemmy instance url as a cmd arg");
+    let config = GatewayConfig { lemmy_url };
 
     let app_state = AppState {
         http_client: Default::default(),
-        config: GatewayConfig { lemmy_url },
     };
 
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .service(frontpage)
             .service(subreddit)
             .service(comments_for_post)
             .app_data(app_state.clone())
+            .app_data(config.clone())
     })
     .bind(("127.0.0.1", 8000))?
     .run()

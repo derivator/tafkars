@@ -1,14 +1,51 @@
-use crate::GatewayConfig;
+use crate::ResponseState;
 use lemmy_api_common::comment::GetCommentsResponse;
+use lemmy_api_common::lemmy_db_schema::newtypes::DbUrl;
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
+use std::borrow::ToOwned;
 use tafkars::comment::{Comment, CommentData, MaybeReplies};
 use tafkars::listing::{Listing, ListingData};
 use tafkars::submission::{Submission, SubmissionData};
 
-pub fn posts(config: &GatewayConfig, res: GetPostsResponse) -> Listing<Submission> {
-    let posts = res.posts.into_iter().map(|p| post(config, p)).collect();
+use markdown;
+
+impl<'a> ResponseState<'a> {
+    pub fn escape_actor_id_str(&self, actor_id: &str) -> Option<String> {
+        if let [instance, _ty, name] = actor_id
+            .split("://")
+            .last()?
+            .split('/')
+            .collect::<Vec<&str>>()[..]
+        {
+            if self.res_config.escape_names {
+                let instance = instance.replace('.', "_");
+                Some(format!("{name}__{instance}"))
+            } else {
+                Some(format!("{name}@{instance}"))
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn escape_actor_id(&self, actor_id: &DbUrl) -> Option<String> {
+        self.escape_actor_id_str(actor_id.as_str())
+    }
+
+    pub fn unescape_name(&self, escaped: &str) -> Option<String> {
+        if self.res_config.unescape_names {
+            let (name, instance) = escaped.rsplit_once("__")?;
+            Some(format!("{name}@{instance}"))
+        } else {
+            Some(escaped.to_owned())
+        }
+    }
+}
+
+pub fn posts(state: &ResponseState, res: GetPostsResponse) -> Listing<Submission> {
+    let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
 
     Listing {
         data: ListingData {
@@ -21,11 +58,13 @@ pub fn posts(config: &GatewayConfig, res: GetPostsResponse) -> Listing<Submissio
     }
 }
 
-pub fn post(_config: &GatewayConfig, pv: PostView) -> Submission {
+pub fn post(state: &ResponseState, pv: PostView) -> Submission {
     let p = pv.post;
     let community_id = p.community_id.0;
     let post_id = p.id;
-    let subreddit = pv.community.name;
+    let subreddit = state
+        .escape_actor_id(&pv.community.actor_id)
+        .unwrap_or("invalid".to_owned());
     let thumbnail = p
         .thumbnail_url
         .map(|u| u.to_string())
@@ -36,6 +75,9 @@ pub fn post(_config: &GatewayConfig, pv: PostView) -> Submission {
     } else {
         Value::from(false)
     };
+    let author = state
+        .escape_actor_id(&pv.creator.actor_id)
+        .unwrap_or("invalid".to_owned());
 
     let permalink = format!("/comments/{post_id}/"); // TODO: this might work for some clients, but reddit does /r/{subreddit}/comments/{id}/{urlsafe_name}
 
@@ -53,7 +95,7 @@ pub fn post(_config: &GatewayConfig, pv: PostView) -> Submission {
             gilded: 0,
             archived: false,
             clicked: false,
-            author: pv.creator.name,
+            author,
             score: pv.counts.score,
             approved_by: None,
             over_18: p.nsfw,
@@ -121,7 +163,7 @@ pub fn insert_at(comments: &mut Vec<Comment>, path: &[String], comment: Comment)
     comments.push(comment);
 }
 
-pub fn comments(config: &GatewayConfig, mut res: GetCommentsResponse) -> Listing<Comment> {
+pub fn comments(state: &ResponseState, mut res: GetCommentsResponse) -> Listing<Comment> {
     let depth = |cv: &CommentView| cv.comment.path.matches('.').count();
     res.comments.sort_by_key(|cv| depth(cv)); // stable sort preserves Hot/Old/New/... sorting
 
@@ -129,7 +171,7 @@ pub fn comments(config: &GatewayConfig, mut res: GetCommentsResponse) -> Listing
     for cv in res.comments.into_iter() {
         let mut path: Vec<String> = cv.comment.path.split('.').map(|s| s.to_owned()).collect();
         path.pop();
-        insert_at(&mut comments, &path[1..], comment(config, cv))
+        insert_at(&mut comments, &path[1..], comment(state, cv))
     }
 
     Listing {
@@ -143,14 +185,24 @@ pub fn comments(config: &GatewayConfig, mut res: GetCommentsResponse) -> Listing
     }
 }
 
-pub fn comment(_config: &GatewayConfig, cv: CommentView) -> Comment {
+pub fn comment(state: &ResponseState, cv: CommentView) -> Comment {
     let c = cv.comment;
+    let author = state
+        .escape_actor_id(&cv.creator.actor_id)
+        .unwrap_or("invalid".to_owned());
     let id = c.id.0.to_string();
+
     let body = if c.deleted {
         "[deleted]".to_owned()
     } else {
         c.content
     };
+
+    let mut body_html = markdown::to_html(&body);
+    if !state.res_config.raw_json {
+        body_html = html_escape::encode_safe(&body_html).to_string();
+    }
+
     let path: Vec<&str> = c.path.split('.').collect();
     let parent_id = *path.last().unwrap_or(&"wtf");
     let parent_id = if parent_id == "0" {
@@ -170,7 +222,7 @@ pub fn comment(_config: &GatewayConfig, cv: CommentView) -> Comment {
             gilded: Some(0),
             archived: Some(false),
             no_follow: None,
-            author: Some(cv.creator.name),
+            author: Some(author),
             can_mod_post: Some(false),
             created_utc: Some(c.published.timestamp() as f64), //TODO: wrong?
             send_replies: None,
@@ -180,13 +232,13 @@ pub fn comment(_config: &GatewayConfig, cv: CommentView) -> Comment {
             over_18: None,
             approved_by: None,
             subreddit_id: None,
-            body: Some(body.clone()),
+            body: Some(body),
             link_title: None,
             name: Some(format!("t1_{id}")),
             author_patreon_flair: None,
             downs: Some(cv.counts.downvotes as i32),
             is_submitter: None,
-            body_html: Some(body), // TODO: transform markdown to html
+            body_html: Some(body_html),
             distinguished: None,
             stickied: Some(false),
             author_premium: None,
