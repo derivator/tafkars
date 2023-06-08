@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["derivator <derivator@users.noreply.github.com>"]
 description = "API proxy to access Lemmy via the API formerly known as..."
+repository = "https://github.com/derivator/tafkars"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
