@@ -175,7 +175,7 @@ pub fn comment(_config: &GatewayConfig, cv: CommentView) -> Comment {
             created_utc: Some(c.published.timestamp() as f64), //TODO: wrong?
             send_replies: None,
             parent_id: Some(parent_id),
-            score: None,
+            score: Some(cv.counts.score as i32),
             author_fullname: None,
             over_18: None,
             approved_by: None,
