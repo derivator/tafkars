@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 /// JSON list response.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ListingData<T> {
     /// Modhash
     pub modhash: Option<String>,
@@ -14,7 +14,7 @@ pub struct ListingData<T> {
     pub children: Vec<T>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename = "Listing")]
 pub struct Listing<T> {
     pub data: ListingData<T>,
