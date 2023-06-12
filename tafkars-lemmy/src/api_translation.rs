@@ -4,19 +4,27 @@ use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
 use std::borrow::ToOwned;
 use tafkars::comment::{Comment, CommentData};
-use tafkars::listing::Listing;
+use tafkars::listing::{Listing, ListingData};
 use tafkars::submission::{Submission, SubmissionData};
 
-use crate::web_config;
+use crate::endpoints;
 use markdown;
 
-pub fn posts(state: &web_config::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
+pub fn posts(state: &endpoints::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
     let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
 
-    Listing::new(posts)
+    Listing {
+        data: ListingData {
+            modhash: Some("c2swiur5ry66d67eca991e911ebb57b824a27f0d9ad1264bf6".to_string()),
+            dist: Some(1),
+            after: None,
+            before: None,
+            children: posts,
+        },
+    }
 }
 
-pub fn post(state: &web_config::ResponseState, pv: PostView) -> Submission {
+pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
     let p = pv.post;
     let community_id = p.community_id.0;
     let post_id = p.id;
@@ -102,7 +110,7 @@ pub fn insert_at(comments: &mut Vec<Comment>, path: &[String], comment: Comment)
 }
 
 pub fn comments(
-    state: &web_config::ResponseState,
+    state: &endpoints::ResponseState,
     mut res: GetCommentsResponse,
 ) -> Listing<Comment> {
     let depth = |cv: &CommentView| cv.comment.path.matches('.').count();
@@ -115,10 +123,18 @@ pub fn comments(
         insert_at(&mut comments, &path[1..], comment(state, cv))
     }
 
-    Listing::new(comments)
+    Listing {
+        data: ListingData {
+            modhash: Some("c2swiur5ry66d67eca991e911ebb57b824a27f0d9ad1264bf6".to_string()),
+            dist: Some(1),
+            after: None,
+            before: None,
+            children: comments,
+        },
+    }
 }
 
-pub fn comment(state: &web_config::ResponseState, cv: CommentView) -> Comment {
+pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     let c = cv.comment;
     let author = state
         .escape_actor_id(&cv.creator.actor_id)

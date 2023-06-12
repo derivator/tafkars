@@ -21,6 +21,7 @@ pub struct Listing<T> {
 }
 
 impl<T> Listing<T> {
+    // TODO: require one of after/before and modhash/dist
     pub fn new(items: Vec<T>) -> Self {
         Self {
             data: ListingData {

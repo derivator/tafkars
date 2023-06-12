@@ -5,10 +5,10 @@ use std::env;
 
 pub mod api_translation;
 pub mod endpoints;
-pub mod web_config;
+pub mod server_config;
 pub use api_translation::*;
 pub use endpoints::*;
-pub use web_config::*;
+pub use server_config::*;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -26,12 +26,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
-            .service(web_root)
-            .service(frontpage)
-            .service(subreddit)
-            .service(comments_for_post)
             .app_data(app_state.clone())
             .app_data(config.clone())
+            .configure(endpoints::config)
     })
     .bind(("127.0.0.1", 8000))?
     .run()

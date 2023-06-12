@@ -139,24 +139,8 @@ pub struct SubmissionData {
     pub can_mod_post: bool,
 }
 
-impl SubmissionData {
-    pub fn new() -> SubmissionData {
-        SubmissionData {
-            ..Default::default()
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename = "t3")]
 pub struct Submission {
     pub data: SubmissionData,
-}
-
-impl Submission {
-    pub fn new() -> Submission {
-        Submission {
-            data: SubmissionData::new(),
-        }
-    }
 }
