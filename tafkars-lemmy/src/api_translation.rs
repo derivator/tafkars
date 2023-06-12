@@ -3,7 +3,7 @@ use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
 use std::borrow::ToOwned;
-use tafkars::comment::{Comment, CommentData};
+use tafkars::comment::{Comment, CommentData, MaybeReplies};
 use tafkars::listing::{Listing, ListingData};
 use tafkars::submission::{Submission, SubmissionData};
 
@@ -50,20 +50,15 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
     Submission {
         data: SubmissionData {
             domain: Some(format!("self.{subreddit}")),
-            banned_by: None,
             subreddit,
-            selftext_html: None,
             selftext: p.body.unwrap_or("".to_owned()),
             likes: pv.my_vote.map(|v| v > 0),
-            suggested_sort: None,
-            link_flair_text: None,
             id: post_id.to_string(),
             gilded: 0,
             archived: false,
             clicked: false,
             author,
             score: pv.counts.score,
-            approved_by: None,
             over_18: p.nsfw,
             spoiler: false,
             hidden: false,
@@ -72,13 +67,10 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
             subreddit_id: format!("t5_{community_id}"),
             hide_score: false,
             edited,
-            link_flair_css_class: None,
-            author_flair_css_class: None,
             downs: pv.counts.downvotes,
             ups: pv.counts.upvotes,
             upvote_ratio: pv.counts.upvotes as f64 / pv.counts.downvotes as f64,
             saved: false,
-            removal_reason: None,
             stickied: false,
             is_self: p.url.is_none(),
             permalink,
@@ -86,15 +78,13 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
             name: format!("t3_{post_id}"),
             created: p.published.timestamp() as f64,
             url: p.url.map(|u| u.to_string()),
-            author_flair_text: None,
             quarantine: false,
             title: p.name,
             created_utc: p.published.timestamp() as f64, // TODO: wrong?
-            distinguished: None,
             visited: false,
-            num_reports: None,
             is_video: false,
             can_mod_post: false,
+            ..Default::default()
         },
     }
 }
@@ -181,55 +171,26 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     };
     Comment {
         data: CommentData {
-            total_awards_received: None,
-            approved_at_utc: None,
-            link_id: None,
-            author_flair_template_id: None,
-            likes: None,
             saved: Some(false),
             id: Some(id.clone()),
             gilded: Some(0),
             archived: Some(false),
-            no_follow: None,
             author: Some(author),
             can_mod_post: Some(false),
             created_utc: Some(c.published.timestamp() as f64), //TODO: wrong?
-            send_replies: None,
             parent_id: Some(parent_id),
             score: Some(cv.counts.score as i32),
-            author_fullname: None,
-            over_18: None,
-            approved_by: None,
-            subreddit_id: None,
             body: Some(body),
-            link_title: None,
             name: Some(format!("t1_{id}")),
-            author_patreon_flair: None,
             downs: Some(cv.counts.downvotes as i32),
-            is_submitter: None,
             body_html: Some(body_html),
-            distinguished: None,
             stickied: Some(false),
-            author_premium: None,
-            can_gild: None,
-            subreddit: None,
-            author_flair_text_color: None,
             score_hidden: Some(false),
-            permalink: None,
-            num_reports: None,
-            link_permalink: None,
-            link_author: None,
-            subreddit_name_prefixed: None,
-            author_flair_text: None,
-            link_url: None,
-            created: None,
-            collapsed: None,
             controversiality: Some(0),
             locked: Some(false),
-            quarantine: None,
-            subreddit_type: None,
             ups: Some(cv.counts.upvotes as i32),
             replies: Some(MaybeReplies::Str("".to_owned())),
+            ..Default::default()
         },
     }
 }
