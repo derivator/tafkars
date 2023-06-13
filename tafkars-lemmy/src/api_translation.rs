@@ -157,10 +157,7 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
         c.content
     };
 
-    let mut body_html = markdown::to_html(&body);
-    if !state.res_config.raw_json {
-        body_html = html_escape::encode_safe(&body_html).to_string();
-    }
+    let body_html = state.res_config.markdown_to_html(&body);
 
     let path: Vec<&str> = c.path.split('.').collect();
     let parent_id = *path.last().unwrap_or(&"wtf");

@@ -26,6 +26,17 @@ pub struct ResponseConfig {
     pub unescape_names: bool,
 }
 
+impl ResponseConfig {
+    pub fn markdown_to_html(&self, md_text: &str) -> String {
+        let html = markdown::to_html(md_text);
+        if self.raw_json {
+            html
+        } else {
+            html_escape::encode_safe(&html).to_string()
+        }
+    }
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web_root)
         .service(frontpage)
