@@ -27,17 +27,10 @@ pub struct ResponseConfig {
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    let app_state = AppState {
-        http_client: Default::default(),
-    };
-
     cfg.service(web_root)
         .service(frontpage)
-        .service(frontpage)
         .service(subreddit)
-        .service(comments_for_post)
-        .app_data(app_state.clone())
-        .app_data(config.clone());
+        .service(comments_for_post);
 }
 
 pub struct ResponseState<'a> {
