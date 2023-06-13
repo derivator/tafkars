@@ -1,5 +1,6 @@
 use lemmy_api_common::comment::GetCommentsResponse;
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
+use lemmy_api_common::lemmy_db_views_actor::structs::CommunityView;
 use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
 use std::borrow::ToOwned;
@@ -8,7 +9,7 @@ use tafkars::listing::{Listing, ListingData};
 use tafkars::submission::{Submission, SubmissionData};
 
 use crate::endpoints;
-use markdown;
+use tafkars::subreddit::{AccountsActive, Subreddit, SubredditData};
 
 pub fn posts(state: &endpoints::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
     let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
@@ -187,6 +188,38 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             locked: Some(false),
             ups: Some(cv.counts.upvotes as i32),
             replies: Some(MaybeReplies::Str("".to_owned())),
+            ..Default::default()
+        },
+    }
+}
+
+pub fn community(state: &endpoints::ResponseState, cv: CommunityView) -> Subreddit {
+    let c = cv.community;
+    let id = c.id.0.to_string();
+    let active = AccountsActive::Number(cv.counts.users_active_day as u64);
+    let name = state.escape_actor_id(&c.actor_id).unwrap_or(c.name);
+    let description = c.description.unwrap_or("".to_owned());
+    let description_html = state.res_config.markdown_to_html(&description);
+
+    Subreddit {
+        data: SubredditData {
+            display_name: Some(name.clone()),
+            display_name_prefixed: Some(format!("r/{name}")),
+            header_img: c.banner.map(|x| x.to_string()),
+            title: Some(c.title),
+            id: Some(id.clone()),
+            accounts_active: Some(active.clone()),
+            active_user_count: Some(active),
+            subscribers: Some(cv.counts.subscribers as u64),
+            name: Some(format!("t5_{id}")),
+            description: Some(description.clone()), // TODO: should we include moderators and other stuff that lemmy shows in sidebar?
+            description_html: Some(description_html.clone()),
+            public_description: Some(description), // TODO: this should be a one liner, not the full sidebar
+            public_description_html: Some(description_html),
+            over18: Some(c.nsfw),
+            url: Some(format!("/r/{name}")),
+            created: Some(c.published.timestamp() as f64),
+            created_utc: Some(c.published.timestamp() as f64),
             ..Default::default()
         },
     }

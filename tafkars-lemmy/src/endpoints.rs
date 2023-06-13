@@ -1,6 +1,7 @@
 use actix_web::http::header::ContentType;
 use actix_web::{get, web, HttpRequest, HttpResponse};
 use lemmy_api_common::comment::{GetComments, GetCommentsResponse};
+use lemmy_api_common::community::{GetCommunity, GetCommunityResponse};
 use lemmy_api_common::lemmy_db_schema::newtypes::{DbUrl, PostId};
 use lemmy_api_common::lemmy_db_schema::{CommentSortType, ListingType};
 use lemmy_api_common::post::{GetPost, GetPostResponse, GetPosts, GetPostsResponse};
@@ -40,6 +41,7 @@ impl ResponseConfig {
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web_root)
         .service(frontpage)
+        .service(subreddit_about)
         .service(subreddit)
         .service(comments_for_post);
 }
@@ -154,6 +156,13 @@ impl<'a> ResponseState<'a> {
     ) -> Result<GetCommentsResponse, server_config::ServerSideError> {
         self.api_call_typed("api/v3/comment/list", params).await
     }
+
+    pub async fn get_community(
+        &self,
+        params: &GetCommunity,
+    ) -> Result<GetCommunityResponse, server_config::ServerSideError> {
+        self.api_call_typed("api/v3/community", params).await
+    }
 }
 
 #[get("/")]
@@ -162,6 +171,29 @@ async fn web_root() -> Result<HttpResponse, server_config::ServerSideError> {
     Ok(HttpResponse::Ok()
         .insert_header(ContentType::json())
         .body(serde_json::to_string(&message)?))
+}
+
+#[get("/r/{subreddit}/about{_:/?}.json")]
+async fn subreddit_about(
+    req: HttpRequest,
+    path: web::Path<(String,)>,
+) -> Result<HttpResponse, server_config::ServerSideError> {
+    let state = prepare(&req)?;
+    let (sr,) = path.into_inner();
+
+    let sr = state.unescape_name(&sr).unwrap_or(sr);
+
+    let params = GetCommunity {
+        name: Some(sr),
+        auth: None,
+        ..Default::default()
+    };
+
+    let res = state.get_community(&params).await?;
+    let posts = api_translation::community(&state, res.community_view);
+    Ok(HttpResponse::Ok()
+        .insert_header(ContentType::json())
+        .body(serde_json::to_string(&posts)?))
 }
 
 #[get("/r/{subreddit}/{sorting}{_:/?}.json")]

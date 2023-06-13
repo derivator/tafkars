@@ -10,7 +10,7 @@ The hope is that this will make it easy for app developers to support Lemmy with
     - [ ] pagination
     - [ ] sorting
     - [x] community post list
-    - [ ] community info (sidebar, mods, etc.)
+    - [x] community sidebar
     - [x] posts
     - [x] comments
     - [x] comment threading
