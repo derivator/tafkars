@@ -72,7 +72,7 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
             ups: pv.counts.upvotes,
             upvote_ratio: pv.counts.upvotes as f64 / pv.counts.downvotes as f64,
             saved: false,
-            stickied: false,
+            stickied: p.featured_community || p.featured_local,
             is_self: p.url.is_none(),
             permalink,
             locked: p.locked,
