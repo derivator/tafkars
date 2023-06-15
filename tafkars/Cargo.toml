@@ -1,12 +1,12 @@
 [package]
-name = "tafkars"
-version = "0.1.0"
-edition = "2021"
-license = "MIT"
-authors = ["derivator <derivator@users.noreply.github.com>"]
-description = "The API formerly known as..."
-repository = "https://github.com/derivator/tafkars"
+name        = "tafkars"
+edition     = { workspace = true }
+authors     = { workspace = true }
+description = { workspace = true }
+version     = { workspace = true }
+license     = "MIT"
+repository  = { workspace = true }
 
 [dependencies]
 serde_json = "1.0.96"
-serde = { version = "1.0.163", features = ["derive"] }
+serde      = { version = "1.0.163", features = ["derive"] }
