@@ -1,8 +1,8 @@
 [package]
 name        = "tafkars-lemmy"
-license     = { workspace = true }
-authors     = ["derivator <derivator@users.noreply.github.com>"]
 description = "API proxy to access Lemmy via the API formerly known as..."
+license     = { workspace = true }
+authors     = { workspace = true }
 version     = { workspace = true }
 repository  = { workspace = true }
 edition     = { workspace = true }

@@ -1,10 +1,10 @@
 [package]
 name        = "tafkars"
+license     = "MIT"
 edition     = { workspace = true }
 authors     = { workspace = true }
 description = { workspace = true }
 version     = { workspace = true }
-license     = "MIT"
 repository  = { workspace = true }
 
 [dependencies]
