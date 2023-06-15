@@ -4,6 +4,29 @@ Tafkars stands for "The API formerly known as...", is written in Rust and is pro
 `tafkars-lemmy` is an API proxy that allows apps to talk to [Lemmy](https://github.com/LemmyNet/lemmy) through a familiar API from a kinder time.  
 The hope is that this will make it easy for app developers to support Lemmy with only minimal code changes.  
 
+## Quickstart Guide
+
+This Quickstart guide assumes you are using [this fork of libreddit](https://github.com/derivator/libreddit) and [lemmy.world](https://lemmy.world) to quickly get up and running with tafkars.
+`tafkars-lemmy` should work with any Reddit client that allows you to set the API url. In this guide,  we will use a [fork of libreddit](https://github.com/derivator/libreddit) for quick setup.
+`tafkars-lemmy` should work with any Lemmy instance. In this guide, we will use [lemmy.world](https://lemmy.world) for quick setup.
+
+- Run tafkars:
+    - You can substitute lemmy.world with any lemmy instance of your choice
+```
+git clone https://github.com/derivator/tafkars
+cd tafkars
+cargo run https://lemmy.world
+```
+- Run libreddit app against `127.0.0.1:8000` (default location of tafkars-lemmy proxy):
+    - You can substitute this with any app that allows for a custom API URL to be passed in
+```
+git clone https://github.com/derivator/libreddit
+cd libreddit
+cargo run
+```
+- Visit webclient for libreddit: [http://localhost:8080/](http://localhost:8080/)
+    - You can substitute this with whatever app you are using.
+
 ## API implementation status
 
 - [ ] viewing:
