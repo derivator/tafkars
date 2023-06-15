@@ -3,10 +3,12 @@
 pub mod comment;
 pub mod listing;
 pub mod submission;
+pub mod subreddit;
 
 use crate::comment::CommentData;
 use crate::listing::ListingData;
 use crate::submission::SubmissionData;
+use crate::subreddit::SubredditData;
 use serde::{Deserialize, Serialize};
 
 /// Basic structure of a Reddit response.
@@ -18,6 +20,8 @@ pub enum RedditThing {
     Comment(CommentData),
     #[serde(rename = "t3")]
     Submission(SubmissionData),
+    #[serde(rename = "t5")]
+    Subreddit(SubredditData),
     #[serde(rename = "Listing")]
     Listing(ListingData<RedditThing>),
 }

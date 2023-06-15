@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// SubmissionsData
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SubmissionData {
     /// The domain of the link (if link post) or self.subreddit (if self post).
     /// Domains do not include a protocol, e.g. `i.redd.it` or `self.learnprogramming`
@@ -139,7 +139,7 @@ pub struct SubmissionData {
     pub can_mod_post: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(tag = "kind", rename = "t3")]
 pub struct Submission {
     pub data: SubmissionData,
