@@ -1,22 +1,22 @@
 [package]
-name = "tafkars-lemmy"
-version = "0.1.0"
-edition = "2021"
-license = "MIT"
-authors = ["derivator <derivator@users.noreply.github.com>"]
+name        = "tafkars-lemmy"
 description = "API proxy to access Lemmy via the API formerly known as..."
-repository = "https://github.com/derivator/tafkars"
+license     = { workspace = true }
+authors     = { workspace = true }
+version     = { workspace = true }
+repository  = { workspace = true }
+edition     = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "4.3.1"
-env_logger = "0.10.0"
-lemmy_api_common = { version="0.17.3", git = "https://github.com/derivator/lemmy", rev="fbce064102c7ff446f561be050d703e39f00d722" }
-reqwest = "0.11.18"
-serde_json = "1.0.96"
-serde = "1.0.163"
-tafkars = { version = "0.1.0", path="../tafkars" }
-thiserror = "1.0.40"
-html-escape = "0.2.13"
-markdown = "1.0.0-alpha.9"
+actix-web        = "4.3.1"
+env_logger       = "0.10.0"
+lemmy_api_common = { version = "0.17.3", git = "https://github.com/derivator/lemmy", rev = "fbce064102c7ff446f561be050d703e39f00d722" }
+reqwest          = "0.11.18"
+serde_json       = "1.0.96"
+serde            = "1.0.163"
+tafkars          = { version = "0.1.0", path = "../tafkars" }
+thiserror        = "1.0.40"
+html-escape      = "0.2.13"
+markdown         = "1.0.0-alpha.9"
