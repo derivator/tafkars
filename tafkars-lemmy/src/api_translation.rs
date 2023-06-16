@@ -124,7 +124,8 @@ pub fn insert_at(comments: &mut Vec<Comment>, path: &[String], comment: Comment)
 pub fn comment_sort(order: SortOrder) -> Option<CommentSortType> {
     use CommentSortType::*;
     match order {
-        SortOrder::Confidence => Some(Hot),
+        SortOrder::Confidence => Some(Top), // best we can do?
+        SortOrder::Hot => Some(Hot),
         SortOrder::Top => Some(Top),
         SortOrder::New => Some(New),
         SortOrder::Old => Some(Old),

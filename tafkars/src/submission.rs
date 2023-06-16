@@ -141,6 +141,8 @@ pub struct Submission {
 #[serde(rename_all = "lowercase")]
 pub enum SortOrder {
     Confidence,
+    /// According to API docs, hot is not a valid sort order for comments, but RedReader uses it
+    Hot,
     Top,
     New,
     Old,
