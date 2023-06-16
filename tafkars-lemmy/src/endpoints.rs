@@ -3,12 +3,13 @@ use actix_web::{get, web, HttpRequest, HttpResponse};
 use lemmy_api_common::comment::{GetComments, GetCommentsResponse};
 use lemmy_api_common::community::{GetCommunity, GetCommunityResponse};
 use lemmy_api_common::lemmy_db_schema::newtypes::{DbUrl, PostId};
-use lemmy_api_common::lemmy_db_schema::{CommentSortType, ListingType};
+use lemmy_api_common::lemmy_db_schema::ListingType;
 use lemmy_api_common::post::{GetPost, GetPostResponse, GetPosts, GetPostsResponse};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tafkars::listing::Listing;
+use tafkars::submission;
 
 use crate::api_translation;
 use crate::server_config;
@@ -245,9 +246,12 @@ async fn frontpage(
 async fn comments_for_post(
     req: HttpRequest,
     path: web::Path<(String,)>,
+    query: web::Query<submission::Query>,
 ) -> Result<HttpResponse, server_config::ServerSideError> {
     let state = prepare(&req)?;
     let post_id = path.into_inner().0.parse()?;
+    let query = query.0;
+    let sort = query.sort.map(api_translation::comment_sort).flatten();
 
     let res = state
         .get_post(&GetPost {
@@ -261,10 +265,10 @@ async fn comments_for_post(
     let res = state
         .get_comments(&GetComments {
             type_: Some(ListingType::All),
-            sort: Some(CommentSortType::Hot),
-            max_depth: None,
+            sort,
+            max_depth: query.depth.map(|x| x as i32),
             page: None,
-            limit: Some(100),
+            limit: Some(query.limit.unwrap_or(100) as i64),
             post_id: Some(PostId(post_id)),
             auth: None,
             ..Default::default()

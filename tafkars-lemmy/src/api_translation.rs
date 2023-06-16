@@ -1,4 +1,5 @@
 use lemmy_api_common::comment::GetCommentsResponse;
+use lemmy_api_common::lemmy_db_schema::CommentSortType;
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::lemmy_db_views_actor::structs::CommunityView;
 use lemmy_api_common::post::GetPostsResponse;
@@ -6,7 +7,7 @@ use serde_json::Value;
 use std::borrow::ToOwned;
 use tafkars::comment::{Comment, CommentData, MaybeReplies};
 use tafkars::listing::{Listing, ListingData};
-use tafkars::submission::{Submission, SubmissionData};
+use tafkars::submission::{SortOrder, Submission, SubmissionData};
 
 use crate::endpoints;
 use tafkars::subreddit::{AccountsActive, Subreddit, SubredditData};
@@ -118,6 +119,17 @@ pub fn insert_at(comments: &mut Vec<Comment>, path: &[String], comment: Comment)
         }
     }
     comments.push(comment);
+}
+
+pub fn comment_sort(order: SortOrder) -> Option<CommentSortType> {
+    use CommentSortType::*;
+    match order {
+        SortOrder::Confidence => Some(Hot),
+        SortOrder::Top => Some(Top),
+        SortOrder::New => Some(New),
+        SortOrder::Old => Some(Old),
+        _ => None,
+    }
 }
 
 pub fn comments(
