@@ -22,17 +22,8 @@ pub struct SubmissionData {
     /// This is `Some(true)` if the logged-in user has upvoted this submission, `Some(false)` if
     /// the user has downvoted this submission or `None` if the user has not voted.
     pub likes: Option<bool>,
-    /// If a specifc sort method is suggested, this is set to the string name of it, otherwise
-    /// it is `None`.
-    /// # Possible values
-    /// - top
-    /// - new
-    /// - controversial
-    /// - old
-    /// - qa
-    /// - confidence
-    /// - live
-    pub suggested_sort: Option<String>,
+    /// Suggested sort order
+    pub suggested_sort: Option<SortOrder>,
     // skipped user_reports and secure_media
     /// If this post is flaired, this set to `Some(FLAIR TEXT)`. Otherwise, it is `None`.
     /// Link flairs **can** be empty strings.
@@ -143,4 +134,53 @@ pub struct SubmissionData {
 #[serde(tag = "kind", rename = "t3")]
 pub struct Submission {
     pub data: SubmissionData,
+}
+
+/// Ways to sort the comments on a submission
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortOrder {
+    Confidence,
+    Top,
+    New,
+    Old,
+    Controversial,
+    Random,
+    QA,
+    Live,
+}
+
+#[derive(Debug, Deserialize)]
+/// Query parameters for the comments endpoint, get the comments for a submission
+pub struct Query {
+    /// if set, get replies subtree for this comment
+    comment: Option<u64>, // TODO: parse base36
+    /// number of parent comments to include in response
+    context: Option<u8>,
+    // #[serde(flatten)] // Not used due to: https://github.com/samscott89/serde_qs/issues/14
+    //pub comment_context: Option<CommentContext>,
+    pub depth: Option<u8>,
+    pub limit: Option<u32>,
+    pub showedits: Option<bool>,
+    pub showmedia: Option<bool>,
+    pub showmore: Option<bool>,
+    pub showtitle: Option<bool>,
+    pub sort: Option<SortOrder>,
+    /// (optional) expand subreddits
+    pub sr_detail: Option<bool>, //???
+    /// one of (default, dark)
+    pub theme: Option<String>,
+    pub threaded: Option<bool>,
+    /// an integer between 0 and 50
+    pub truncate: Option<u8>,
+}
+
+/// Select a comment and context
+/// Not used due to: https://github.com/samscott89/serde_qs/issues/14
+#[derive(Debug, Deserialize)]
+pub struct CommentContext {
+    /// comment id
+    comment: u64, // TODO: parse base36
+    /// number of parent comments to include in response
+    context: Option<u8>,
 }
