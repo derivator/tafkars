@@ -166,12 +166,18 @@ impl<'a> ResponseState<'a> {
     }
 }
 
+pub fn respond_json<T: Serialize>(
+    data: &T,
+) -> Result<HttpResponse, server_config::ServerSideError> {
+    Ok(HttpResponse::Ok()
+        .insert_header(ContentType::json())
+        .body(serde_json::to_string(data)?))
+}
+
 #[get("/")]
 async fn web_root() -> Result<HttpResponse, server_config::ServerSideError> {
     let message = "Thank you for using tafkars! To see more info and documentation, please see the repo: https://github.com/derivator/tafkars";
-    Ok(HttpResponse::Ok()
-        .insert_header(ContentType::json())
-        .body(serde_json::to_string(&message)?))
+    respond_json(&message)
 }
 
 #[get("/r/{subreddit}/about{_:/?}.json")]
@@ -191,10 +197,8 @@ async fn subreddit_about(
     };
 
     let res = state.get_community(&params).await?;
-    let posts = api_translation::community(&state, res.community_view);
-    Ok(HttpResponse::Ok()
-        .insert_header(ContentType::json())
-        .body(serde_json::to_string(&posts)?))
+    let com = api_translation::community(&state, res.community_view);
+    respond_json(&com)
 }
 
 #[get("/r/{subreddit}/{sorting}{_:/?}.json")]
@@ -216,9 +220,7 @@ async fn subreddit(
 
     let res = state.get_posts(&params).await?;
     let posts = api_translation::posts(&state, res);
-    Ok(HttpResponse::Ok()
-        .insert_header(ContentType::json())
-        .body(serde_json::to_string(&posts)?))
+    respond_json(&posts)
 }
 
 #[get("/{sorting}{_:/?}.json")]
@@ -237,9 +239,7 @@ async fn frontpage(
 
     let res = state.get_posts(&params).await?;
     let posts = api_translation::posts(&state, res);
-    Ok(HttpResponse::Ok()
-        .insert_header(ContentType::json())
-        .body(serde_json::to_string(&posts)?))
+    respond_json(&posts)
 }
 
 #[get("/comments/{post_id}{_:/?}.json")]
@@ -276,7 +276,5 @@ async fn comments_for_post(
         .await?;
     let comments = api_translation::comments(&state, res);
 
-    Ok(HttpResponse::Ok()
-        .insert_header(ContentType::json())
-        .body(serde_json::to_string(&(post_listing, comments))?))
+    respond_json(&(post_listing, comments))
 }
