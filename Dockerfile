@@ -31,7 +31,7 @@ WORKDIR /app
 USER tafkars
 
 # Copy resources
-COPY --from=builder /app/target/release/tafkars-lemmy /usr/local/bin/tafkars
+COPY --from=builder /app/target/release/tafkars-lemmy /usr/local/bin
 
 EXPOSE 8000
-ENTRYPOINT ["tafkars"]
+ENTRYPOINT ["tafkars-lemmy"]
