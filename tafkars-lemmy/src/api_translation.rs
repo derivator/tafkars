@@ -160,6 +160,8 @@ pub fn comments(
 
 pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     let c = cv.comment;
+    let post_id = cv.post.id.0.to_string();
+    let subreddit = cv.community.name;
     let author = state
         .escape_actor_id(&cv.creator.actor_id)
         .unwrap_or("invalid".to_owned());
@@ -176,7 +178,7 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     let path: Vec<&str> = c.path.split('.').collect();
     let parent_id = *path.last().unwrap_or(&"wtf");
     let parent_id = if parent_id == "0" {
-        format!("t3_{}", cv.post.id)
+        format!("t3_{post_id}")
     } else {
         format!("t1_{parent_id}")
     };
@@ -190,6 +192,7 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             can_mod_post: Some(false),
             created_utc: Some(c.published.timestamp() as f64), //TODO: wrong?
             parent_id: Some(parent_id),
+            link_id: Some(post_id.clone()),
             score: Some(cv.counts.score as i32),
             body: Some(body),
             name: Some(format!("t1_{id}")),
@@ -201,6 +204,7 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             locked: Some(false),
             ups: Some(cv.counts.upvotes as i32),
             replies: Some(MaybeReplies::Str("".to_owned())),
+            permalink: Some(format!("/r/{subreddit}/{post_id}/permalink/{id}")),
             ..Default::default()
         },
     }
