@@ -1,4 +1,5 @@
 //! # Subreddit Responses
+use crate::submission;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -236,7 +237,7 @@ pub struct SubredditData {
     /// The suggested comment sort order for this subreddit, if one has been set.
     /// If no sort order has been configured, this will be null.
     /// Observed values (as of August 2019) include: confidence, controversial, live, new, old, qa, random, top
-    pub suggested_comment_sort: Option<String>,
+    pub suggested_comment_sort: Option<submission::SortOrder>,
     /// Whether or not users can assign flair to their own links in this subreddit.
     /// If false, only a moderator can assign flair to links.
     pub can_assign_link_flair: Option<bool>,
@@ -318,4 +319,34 @@ pub struct SubredditData {
     pub mobile_banner_image: Option<String>,
     /// Whether or not the API user is a moderator of this subreddit.
     pub user_is_moderator: Option<bool>,
+}
+
+/// Ways to sort submissions in a subreddit
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortOrder {
+    Hot,
+    New,
+    Rising,
+    Controversial,
+    Best,
+    Top,
+}
+
+/// Time filters for controversial and top sorting
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FilterTime {
+    Hour,
+    Day,
+    Week,
+    Month,
+    Year,
+    All,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Query {
+    #[serde(rename = "t")]
+    pub time: Option<FilterTime>,
 }

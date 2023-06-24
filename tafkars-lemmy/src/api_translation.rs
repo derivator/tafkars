@@ -1,5 +1,5 @@
 use lemmy_api_common::comment::GetCommentsResponse;
-use lemmy_api_common::lemmy_db_schema::CommentSortType;
+use lemmy_api_common::lemmy_db_schema::{CommentSortType, SortType};
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::lemmy_db_views_actor::structs::CommunityView;
 use lemmy_api_common::post::GetPostsResponse;
@@ -8,9 +8,10 @@ use std::borrow::ToOwned;
 use tafkars::comment::{Comment, CommentData, MaybeReplies};
 use tafkars::listing::{Listing, ListingData};
 use tafkars::submission::{SortOrder, Submission, SubmissionData};
+use tafkars::subreddit;
 
 use crate::endpoints;
-use tafkars::subreddit::{AccountsActive, Subreddit, SubredditData};
+use tafkars::subreddit::{AccountsActive, FilterTime, Subreddit, SubredditData};
 
 pub fn posts(state: &endpoints::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
     let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
@@ -206,6 +207,26 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             replies: Some(MaybeReplies::Str("".to_owned())),
             permalink: Some(format!("/r/{subreddit}/{post_id}/permalink/{id}")),
             ..Default::default()
+        },
+    }
+}
+
+pub fn submission_sort(order: subreddit::SortOrder, time: Option<FilterTime>) -> Option<SortType> {
+    use subreddit::SortOrder::*;
+    use FilterTime::*;
+    match order {
+        Hot => Some(SortType::Hot),
+        New => Some(SortType::New),
+        Rising => Some(SortType::Active),
+        Controversial => Some(SortType::MostComments),
+        Best => Some(SortType::TopAll),
+        Top => match time {
+            None => Some(SortType::TopDay),
+            Some(Day | Hour) => Some(SortType::TopDay), // best we can do
+            Some(Week) => Some(SortType::TopWeek),
+            Some(Month) => Some(SortType::TopMonth),
+            Some(Year) => Some(SortType::TopYear),
+            Some(All) => Some(SortType::TopAll),
         },
     }
 }

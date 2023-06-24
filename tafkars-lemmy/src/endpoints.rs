@@ -7,9 +7,10 @@ use lemmy_api_common::lemmy_db_schema::ListingType;
 use lemmy_api_common::post::{GetPost, GetPostResponse, GetPosts, GetPostsResponse};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde::Serialize;
 use tafkars::listing::Listing;
-use tafkars::submission;
+use tafkars::{submission, subreddit};
 
 use crate::api_translation;
 use crate::server_config;
@@ -42,8 +43,14 @@ impl ResponseConfig {
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web_root)
         .service(frontpage)
-        .service(subreddit_about)
-        .service(subreddit)
+        .service(community_about)
+        .service(
+            web::resource([
+                "/r/{subreddit}{_:/?}.json",
+                "/r/{subreddit}/{sorting}{_:/?}.json",
+            ])
+            .route(web::get().to(community)),
+        )
         .service(comments_for_post);
 }
 
@@ -181,7 +188,7 @@ async fn web_root() -> Result<HttpResponse, server_config::ServerSideError> {
 }
 
 #[get("/r/{subreddit}/about{_:/?}.json")]
-async fn subreddit_about(
+async fn community_about(
     req: HttpRequest,
     path: web::Path<(String,)>,
 ) -> Result<HttpResponse, server_config::ServerSideError> {
@@ -201,19 +208,30 @@ async fn subreddit_about(
     respond_json(&com)
 }
 
-#[get("/r/{subreddit}/{sorting}{_:/?}.json")]
-async fn subreddit(
+#[derive(Debug, Deserialize)]
+struct CommunityPath {
+    subreddit: String,
+    sorting: Option<subreddit::SortOrder>,
+}
+
+async fn community(
     req: HttpRequest,
-    path: web::Path<(String, String)>,
+    path: web::Path<CommunityPath>,
+    query: web::Query<subreddit::Query>,
 ) -> Result<HttpResponse, server_config::ServerSideError> {
     let state = prepare(&req)?;
-    let (subreddit, _sorting) = path.into_inner(); // TODO: apply sorting
+    let path = path.into_inner();
 
+    let sort = path
+        .sorting
+        .and_then(|s| api_translation::submission_sort(s, query.0.time));
+
+    let subreddit = path.subreddit;
     let subreddit = state.unescape_name(&subreddit).unwrap_or(subreddit);
 
     let params = GetPosts {
-        sort: None,
-        community_name: Some(subreddit.to_string()),
+        sort,
+        community_name: Some(subreddit),
         auth: None,
         ..Default::default()
     };
