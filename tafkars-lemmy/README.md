@@ -8,14 +8,16 @@ The hope is that this will make it easy for app developers to support Lemmy with
 
 - [ ] viewing:
     - [ ] pagination
-    - [ ] sorting
+    - [x] sorting
     - [x] community post list
     - [x] community sidebar
+    - [ ] community search
     - [x] posts
     - [x] comments
     - [x] comment threading
     - [ ] user profiles
     - [ ] user post/comment list
+    - [ ] user search
     - [ ] inbox
     - [ ] moderation queue
 - [ ] posting/interacting:

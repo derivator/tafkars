@@ -245,12 +245,15 @@ async fn community(
 #[get("/{sorting}{_:/?}.json")]
 async fn frontpage(
     req: HttpRequest,
-    path: web::Path<(String,)>,
+    path: web::Path<(subreddit::SortOrder,)>,
+    query: web::Query<subreddit::Query>,
 ) -> Result<HttpResponse, server_config::ServerSideError> {
     let state = prepare(&req)?;
-    let (_sorting,) = path.into_inner(); // TODO: apply sorting
+    let (sorting,) = path.into_inner();
+    let sort = api_translation::submission_sort(sorting, query.0.time);
+
     let params = GetPosts {
-        sort: None,
+        sort,
         auth: None,
         type_: Some(ListingType::All),
         ..Default::default()
