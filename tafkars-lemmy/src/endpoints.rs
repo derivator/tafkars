@@ -31,6 +31,7 @@ pub struct ResponseConfig {
 
 impl ResponseConfig {
     pub fn markdown_to_html(&self, md_text: &str) -> String {
+        // TODO: fix <blockquote> tags
         let html = markdown::to_html(md_text);
         if self.raw_json {
             html
@@ -269,13 +270,13 @@ async fn comments_for_post(
     let state = prepare(&req)?;
     let post_id = path.into_inner().0.parse()?;
     let query = query.0;
-    let sort = query.sort.map(api_translation::comment_sort).flatten();
+    let sort = query.sort.and_then(api_translation::comment_sort);
 
     let res = state
         .get_post(&GetPost {
             id: Some(PostId(post_id)),
             auth: None,
-            ..Default::default()
+            comment_id: None,
         })
         .await?;
     let post = api_translation::post(&state, res.post_view);

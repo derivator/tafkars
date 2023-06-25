@@ -156,9 +156,9 @@ pub enum SortOrder {
 /// Query parameters for the comments endpoint, get the comments for a submission
 pub struct Query {
     /// if set, get replies subtree for this comment
-    comment: Option<u64>, // TODO: parse base36
+    pub comment: Option<u64>, // TODO: parse base36
     /// number of parent comments to include in response
-    context: Option<u8>,
+    pub context: Option<u8>,
     // #[serde(flatten)] // Not used due to: https://github.com/samscott89/serde_qs/issues/14
     //pub comment_context: Option<CommentContext>,
     pub depth: Option<u8>,
