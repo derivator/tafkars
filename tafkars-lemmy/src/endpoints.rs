@@ -4,6 +4,7 @@ use lemmy_api_common::comment::{GetComments, GetCommentsResponse};
 use lemmy_api_common::community::{GetCommunity, GetCommunityResponse};
 use lemmy_api_common::lemmy_db_schema::newtypes::{DbUrl, PostId};
 use lemmy_api_common::lemmy_db_schema::ListingType;
+use lemmy_api_common::person::{GetPersonDetails, GetPersonDetailsResponse};
 use lemmy_api_common::post::{GetPost, GetPostResponse, GetPosts, GetPostsResponse};
 use reqwest::Client;
 use serde::de::DeserializeOwned;
@@ -44,6 +45,7 @@ impl ResponseConfig {
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web_root)
         .service(frontpage)
+        .service(user_about)
         .service(community_about)
         .service(
             web::resource([
@@ -172,6 +174,13 @@ impl<'a> ResponseState<'a> {
     ) -> Result<GetCommunityResponse, server_config::ServerSideError> {
         self.api_call_typed("api/v3/community", params).await
     }
+
+    pub async fn get_user(
+        &self,
+        params: &GetPersonDetails,
+    ) -> Result<GetPersonDetailsResponse, server_config::ServerSideError> {
+        self.api_call_typed("api/v3/user", params).await
+    }
 }
 
 pub fn respond_json<T: Serialize>(
@@ -299,4 +308,23 @@ async fn comments_for_post(
     let comments = api_translation::comments(&state, res);
 
     respond_json(&(post_listing, comments))
+}
+
+#[get("/user/{username}/about{_:/?}.json")]
+async fn user_about(
+    req: HttpRequest,
+    path: web::Path<(String,)>,
+) -> Result<HttpResponse, server_config::ServerSideError> {
+    let state = prepare(&req)?;
+    let username = path.into_inner().0;
+    let username = state.unescape_name(&username).unwrap_or(username);
+    let res = state
+        .get_user(&GetPersonDetails {
+            username: Some(username),
+            auth: None,
+            ..Default::default()
+        })
+        .await?;
+    let user = api_translation::user(&state, res);
+    respond_json(&user)
 }

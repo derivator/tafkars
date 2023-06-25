@@ -2,6 +2,7 @@ use lemmy_api_common::comment::GetCommentsResponse;
 use lemmy_api_common::lemmy_db_schema::{CommentSortType, SortType};
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::lemmy_db_views_actor::structs::CommunityView;
+use lemmy_api_common::person::GetPersonDetailsResponse;
 use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
 use std::borrow::ToOwned;
@@ -12,6 +13,7 @@ use tafkars::subreddit;
 
 use crate::endpoints;
 use tafkars::subreddit::{AccountsActive, FilterTime, Subreddit, SubredditData};
+use tafkars::user::{User, UserData};
 
 pub fn timestamp(time: chrono::NaiveDateTime) -> f64 {
     time.timestamp() as f64 // TODO: is this utc?
@@ -266,6 +268,35 @@ pub fn community(state: &endpoints::ResponseState, cv: CommunityView) -> Subredd
             url: Some(format!("/r/{name}")),
             created: Some(created),
             created_utc: Some(created),
+            ..Default::default()
+        },
+    }
+}
+
+pub fn user(state: &endpoints::ResponseState, user: GetPersonDetailsResponse) -> User {
+    let pv = user.person_view;
+    let p = pv.person;
+    let username = state.escape_actor_id(&p.actor_id).unwrap_or(p.name);
+    let created = timestamp(p.published);
+
+    let comment_karma = pv.counts.comment_score as i32;
+    let post_karma = pv.counts.post_score as i32;
+    let total_karma = comment_karma + post_karma;
+
+    User {
+        data: UserData {
+            is_friend: Some(false),
+            id: Some(p.id.0.to_string()),
+            over_18: Some(false),
+            is_gold: Some(false),
+            is_mod: Some(!user.moderates.is_empty()),
+            is_suspended: Some(p.banned),
+            link_karma: Some(post_karma),
+            total_karma: Some(total_karma),
+            name: Some(username),
+            created: Some(created),
+            created_utc: Some(created),
+            comment_karma: Some(comment_karma),
             ..Default::default()
         },
     }
