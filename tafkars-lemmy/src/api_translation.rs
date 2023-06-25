@@ -13,6 +13,10 @@ use tafkars::subreddit;
 use crate::endpoints;
 use tafkars::subreddit::{AccountsActive, FilterTime, Subreddit, SubredditData};
 
+pub fn timestamp(time: chrono::NaiveDateTime) -> f64 {
+    time.timestamp() as f64 // TODO: is this utc?
+}
+
 pub fn posts(state: &endpoints::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
     let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
 
@@ -39,16 +43,16 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
         .map(|u| u.to_string())
         .unwrap_or("self".to_owned());
 
-    let edited = if let Some(timestamp) = p.updated {
-        Value::from(timestamp.timestamp() as f64)
-    } else {
-        Value::from(false)
-    };
+    let edited = p
+        .updated
+        .map_or(Value::from(false), |ts| Value::from(timestamp(ts)));
+
     let author = state
         .escape_actor_id(&pv.creator.actor_id)
         .unwrap_or("invalid".to_owned());
 
     let permalink = format!("/r/{subreddit}/comments/{post_id}/permalink");
+    let created = timestamp(p.published);
 
     Submission {
         data: SubmissionData {
@@ -79,11 +83,11 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
             permalink,
             locked: p.locked,
             name: format!("t3_{post_id}"),
-            created: p.published.timestamp() as f64,
+            created,
+            created_utc: created,
             url: p.url.map(|u| u.to_string()),
             quarantine: false,
             title: p.name,
-            created_utc: p.published.timestamp() as f64, // TODO: wrong?
             visited: false,
             is_video: false,
             can_mod_post: false,
@@ -183,6 +187,9 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     } else {
         format!("t1_{parent_id}")
     };
+
+    let created = timestamp(c.published);
+
     Comment {
         data: CommentData {
             saved: Some(false),
@@ -191,7 +198,7 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             archived: Some(false),
             author: Some(author),
             can_mod_post: Some(false),
-            created_utc: Some(c.published.timestamp() as f64), //TODO: wrong?
+            created_utc: Some(created),
             parent_id: Some(parent_id),
             link_id: Some(post_id.clone()),
             score: Some(cv.counts.score as i32),
@@ -238,6 +245,7 @@ pub fn community(state: &endpoints::ResponseState, cv: CommunityView) -> Subredd
     let name = state.escape_actor_id(&c.actor_id).unwrap_or(c.name);
     let description = c.description.unwrap_or("".to_owned());
     let description_html = state.res_config.markdown_to_html(&description);
+    let created = timestamp(c.published);
 
     Subreddit {
         data: SubredditData {
@@ -256,8 +264,8 @@ pub fn community(state: &endpoints::ResponseState, cv: CommunityView) -> Subredd
             public_description_html: Some(description_html),
             over18: Some(c.nsfw),
             url: Some(format!("/r/{name}")),
-            created: Some(c.published.timestamp() as f64),
-            created_utc: Some(c.published.timestamp() as f64),
+            created: Some(created),
+            created_utc: Some(created),
             ..Default::default()
         },
     }

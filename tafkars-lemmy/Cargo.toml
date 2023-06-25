@@ -20,3 +20,4 @@ tafkars          = { version = "0.1.0", path = "../tafkars" }
 thiserror        = "1.0.40"
 html-escape      = "0.2.13"
 markdown         = "1.0.0-alpha.9"
+chrono = "0.4.26"
