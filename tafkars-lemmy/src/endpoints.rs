@@ -54,7 +54,13 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             ])
             .route(web::get().to(community)),
         )
-        .service(comments_for_post);
+        .service(
+            web::resource([
+                "/comments/{post_id}{_:/?}.json",
+                "/r/{subreddit}/comments/{post_id}/{link_title}{_:/?}.json",
+            ])
+            .route(web::get().to(comments_for_post)),
+        );
 }
 
 pub struct ResponseState<'a> {
@@ -273,14 +279,18 @@ async fn frontpage(
     respond_json(&posts)
 }
 
-#[get("/comments/{post_id}{_:/?}.json")]
+#[derive(Debug, Deserialize)]
+struct CommentsPath {
+    post_id: i32,
+}
+
 async fn comments_for_post(
     req: HttpRequest,
-    path: web::Path<(String,)>,
+    path: web::Path<CommentsPath>,
     query: web::Query<submission::Query>,
 ) -> Result<HttpResponse, server_config::ServerSideError> {
     let state = prepare(&req)?;
-    let post_id = path.into_inner().0.parse()?;
+    let post_id = path.into_inner().post_id;
     let query = query.0;
     let sort = query.sort.and_then(api_translation::comment_sort);
 
