@@ -48,7 +48,7 @@ pub fn post(state: &endpoints::ResponseState, pv: PostView) -> Submission {
         .escape_actor_id(&pv.creator.actor_id)
         .unwrap_or("invalid".to_owned());
 
-    let permalink = format!("/comments/{post_id}/"); // TODO: this might work for some clients, but reddit does /r/{subreddit}/comments/{id}/{urlsafe_name}
+    let permalink = format!("/r/{subreddit}/comments/{post_id}/permalink");
 
     Submission {
         data: SubmissionData {
