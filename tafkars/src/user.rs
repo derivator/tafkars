@@ -1,4 +1,5 @@
 use crate::subreddit;
+use crate::subreddit::FilterTime;
 use serde::{Deserialize, Serialize};
 use subreddit::SubredditData;
 
@@ -135,4 +136,11 @@ pub struct UserData {
     pub has_subscribed: Option<bool>,
     /// accept pms
     pub accept_pms: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubmissionQuery {
+    pub sort: Option<subreddit::SortOrder>,
+    #[serde(rename = "t")]
+    pub time: Option<FilterTime>,
 }

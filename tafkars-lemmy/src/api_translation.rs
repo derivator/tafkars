@@ -1,9 +1,7 @@
-use lemmy_api_common::comment::GetCommentsResponse;
 use lemmy_api_common::lemmy_db_schema::{CommentSortType, SortType};
 use lemmy_api_common::lemmy_db_views::structs::{CommentView, PostView};
 use lemmy_api_common::lemmy_db_views_actor::structs::CommunityView;
 use lemmy_api_common::person::GetPersonDetailsResponse;
-use lemmy_api_common::post::GetPostsResponse;
 use serde_json::Value;
 use std::borrow::ToOwned;
 use tafkars::comment::{Comment, CommentData, MaybeReplies};
@@ -19,8 +17,8 @@ pub fn timestamp(time: chrono::NaiveDateTime) -> f64 {
     time.timestamp() as f64 // TODO: is this utc?
 }
 
-pub fn posts(state: &endpoints::ResponseState, res: GetPostsResponse) -> Listing<Submission> {
-    let posts = res.posts.into_iter().map(|p| post(state, p)).collect();
+pub fn posts(state: &endpoints::ResponseState, posts: Vec<PostView>) -> Listing<Submission> {
+    let posts = posts.into_iter().map(|p| post(state, p)).collect();
 
     Listing {
         data: ListingData {
@@ -142,13 +140,13 @@ pub fn comment_sort(order: SortOrder) -> Option<CommentSortType> {
 
 pub fn comments(
     state: &endpoints::ResponseState,
-    mut res: GetCommentsResponse,
+    mut comments_list: Vec<CommentView>,
 ) -> Listing<Comment> {
     let depth = |cv: &CommentView| cv.comment.path.matches('.').count();
-    res.comments.sort_by_key(|cv| depth(cv)); // stable sort preserves Hot/Old/New/... sorting
+    comments_list.sort_by_key(|cv| depth(cv)); // stable sort preserves Hot/Old/New/... sorting
 
     let mut comments: Vec<Comment> = Vec::new();
-    for cv in res.comments.into_iter() {
+    for cv in comments_list.into_iter() {
         let mut path: Vec<String> = cv.comment.path.split('.').map(|s| s.to_owned()).collect();
         path.pop();
         insert_at(&mut comments, &path[1..], comment(state, cv))
@@ -165,14 +163,39 @@ pub fn comments(
     }
 }
 
+pub fn comments_flat(
+    state: &endpoints::ResponseState,
+    comments_list: Vec<CommentView>,
+) -> Listing<Comment> {
+    let comments: Vec<Comment> = comments_list
+        .into_iter()
+        .map(|cv| comment(state, cv))
+        .collect();
+
+    Listing {
+        data: ListingData {
+            modhash: Some("c2swiur5ry66d67eca991e911ebb57b824a27f0d9ad1264bf6".to_string()),
+            dist: Some(1),
+            after: None,
+            before: None,
+            children: comments,
+        },
+    }
+}
+
 pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
     let c = cv.comment;
     let post_id = cv.post.id.0.to_string();
-    let subreddit = cv.community.name;
+    let subreddit = state
+        .escape_actor_id(&cv.community.actor_id)
+        .unwrap_or(cv.community.name);
+    let subreddit_id = cv.community.id.0.to_string();
+
     let author = state
         .escape_actor_id(&cv.creator.actor_id)
         .unwrap_or("invalid".to_owned());
     let id = c.id.0.to_string();
+    let author_id = c.creator_id.0;
 
     let body = if c.deleted {
         "[deleted]".to_owned()
@@ -199,6 +222,10 @@ pub fn comment(state: &endpoints::ResponseState, cv: CommentView) -> Comment {
             gilded: Some(0),
             archived: Some(false),
             author: Some(author),
+            author_fullname: Some(format!("t2_{author_id}")),
+            subreddit: Some(subreddit.clone()),
+            subreddit_id: Some(subreddit_id),
+            subreddit_type: Some("public".to_string()),
             can_mod_post: Some(false),
             created_utc: Some(created),
             parent_id: Some(parent_id),

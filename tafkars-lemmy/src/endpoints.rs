@@ -11,7 +11,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 use tafkars::listing::Listing;
-use tafkars::{submission, subreddit};
+use tafkars::{submission, subreddit, user};
 
 use crate::api_translation;
 use crate::server_config;
@@ -46,6 +46,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(web_root)
         .service(frontpage)
         .service(user_about)
+        .service(user_submitted)
+        .service(user_comments)
         .service(community_about)
         .service(
             web::resource([
@@ -253,7 +255,7 @@ async fn community(
     };
 
     let res = state.get_posts(&params).await?;
-    let posts = api_translation::posts(&state, res);
+    let posts = api_translation::posts(&state, res.posts);
     respond_json(&posts)
 }
 
@@ -275,7 +277,7 @@ async fn frontpage(
     };
 
     let res = state.get_posts(&params).await?;
-    let posts = api_translation::posts(&state, res);
+    let posts = api_translation::posts(&state, res.posts);
     respond_json(&posts)
 }
 
@@ -315,7 +317,7 @@ async fn comments_for_post(
             ..Default::default()
         })
         .await?;
-    let comments = api_translation::comments(&state, res);
+    let comments = api_translation::comments(&state, res.comments);
 
     respond_json(&(post_listing, comments))
 }
@@ -337,4 +339,60 @@ async fn user_about(
         .await?;
     let user = api_translation::user(&state, res);
     respond_json(&user)
+}
+
+#[get("/user/{username}/submitted{_:/?}.json")]
+async fn user_submitted(
+    req: HttpRequest,
+    path: web::Path<(String,)>,
+    query: web::Query<user::SubmissionQuery>,
+) -> Result<HttpResponse, server_config::ServerSideError> {
+    let state = prepare(&req)?;
+    let username = path.into_inner().0;
+    let username = state.unescape_name(&username).unwrap_or(username);
+    let query = query.0;
+
+    let sort = api_translation::submission_sort(
+        query.sort.unwrap_or(subreddit::SortOrder::Hot),
+        query.time,
+    );
+    let res = state
+        .get_user(&GetPersonDetails {
+            username: Some(username),
+            sort,
+            auth: None,
+            ..Default::default()
+        })
+        .await?;
+
+    let posts = api_translation::posts(&state, res.posts);
+    respond_json(&posts)
+}
+
+#[get("/user/{username}/comments{_:/?}.json")]
+async fn user_comments(
+    req: HttpRequest,
+    path: web::Path<(String,)>,
+    query: web::Query<user::SubmissionQuery>,
+) -> Result<HttpResponse, server_config::ServerSideError> {
+    let state = prepare(&req)?;
+    let username = path.into_inner().0;
+    let username = state.unescape_name(&username).unwrap_or(username);
+    let query = query.0;
+
+    let sort = api_translation::submission_sort(
+        query.sort.unwrap_or(subreddit::SortOrder::Hot),
+        query.time,
+    );
+    let res = state
+        .get_user(&GetPersonDetails {
+            username: Some(username),
+            sort,
+            auth: None,
+            ..Default::default()
+        })
+        .await?;
+
+    let posts = api_translation::comments_flat(&state, res.comments);
+    respond_json(&posts)
 }

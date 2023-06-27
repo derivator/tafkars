@@ -17,7 +17,8 @@ The hope is that this will make it easy for app developers to support Lemmy with
     - [x] comment threading
     - [x] user about
     - [ ] user overview
-    - [ ] user post/comment list
+    - [x] user comments
+    - [x] user submitted
     - [ ] user search
     - [ ] inbox
     - [ ] moderation queue
